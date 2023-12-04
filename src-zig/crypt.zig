@@ -193,15 +193,6 @@ pub fn decrypt( src: []const u8 ,it: [10]  u21 , sep: [] const u8) [] const u8 {
 					n = 0 ;
 					z = 1 ;
 			}
-			// switch(x) {
-			// 	// 44 => {
-			// 	// 		r = @truncate(n);
-			// 	// 		crt =std.fmt.allocPrint(allocator,"{u}", .{r}) catch unreachable;
-			// 	// 		if( z == 0  ) dst =std.fmt.allocPrint(allocator,"{s}", .{crt}) catch unreachable
-			// 	// 		else dst =std.fmt.allocPrint(allocator,"{s}{s}", .{dst,crt}) catch unreachable;
-			// 	// 		n = 0 ;
-			// 	// 		z = 1 ;
-			// 	// },
 			else  {
 						r= 0;
 						while(true) : ( r += 1) {

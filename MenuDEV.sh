@@ -135,7 +135,7 @@ do
 
 #?file
 		66)
-			/home/soleil/.Terminal/lastFileZig.sh $PROJECT
+			/home/soleil/.Terminal/lastFileZig.sh $PROJECT $LIBPROJECT
 		;;
 
 #?clear 
