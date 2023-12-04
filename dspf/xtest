@@ -1,0 +1,29 @@
+{
+  "PANEL": [
+    {
+      "name": "Xpanel",
+      "posx": 1,
+      "posy": 1,
+      "lines": 44,
+      "cols": 168,
+      "cadre": "line1",
+      "title": "Test-Json",
+      "label": [
+        {
+          "name": "L39",
+          "posx": 3,
+          "posy": 9,
+          "text": "Fiche",
+          "title": true
+        },
+        {
+          "name": "L59",
+          "posx": 5,
+          "posy": 9,
+          "text": "Prénom.............:",
+          "title": false
+        },
+      ]
+    }
+  ]
+}
