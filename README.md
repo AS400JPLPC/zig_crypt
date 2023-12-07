@@ -19,6 +19,9 @@ This encryption is designed to discourage unauthorized access when implemented f
 <br />
 the key can contain UTF8 characters<br />
 
-Have fun deciphering without looking at the program.<br />
+Have fun deciphering without looking at the program.<br />  
+  
+  
+It is possible with this principle to include the encryption key in the encrypted file. This key would be generated based on the date and time. Once you understand the program, you will understand what I'm saying.<br />
 
 <BR/><BR/>
