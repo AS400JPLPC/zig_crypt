@@ -89,14 +89,14 @@ pub const iteratStr = struct {
 };
 
 
-pub fn encrypt( src: []const u8, it: [10]  u21 ) std.ArrayList([] const u8) {
+
+pub fn encrypt( src: []const u8, it: [10]  u21) std.ArrayList([] const u8) {
 	const allocator = std.heap.page_allocator;
 	var dst = std.ArrayList([] const u8).init(allocator);
 	var r : [] const u8 = undefined ;
 	var i :u21 = 0;
 	var z :u64 = 0;
 	var crt: [] const u8 = undefined;
-
 	var iter = iteratStr.iterator(src);
 	defer iter.deinit();
 
@@ -155,20 +155,151 @@ pub fn encrypt( src: []const u8, it: [10]  u21 ) std.ArrayList([] const u8) {
 	return dst ;
 }
 
-pub fn decrypt( src: []const u8 ,it: [10]  u21 , sep: [] const u8) [] const u8 {
+
+
+pub fn cryptTextLen( src: std.ArrayList([]const u8) , sep: [] const u8)  u64 {
+
+	var result : u64 = 0;
+
+	for (src.items) |p| {
+		var iter = iteratStr.iterator(p);
+		while (iter.next()) |ch| {
+	
+			if ( std.mem.eql(u8,ch,sep)) continue ;
+			result +=1;
+		}
+		iter.deinit();
+	}
+	return result;
+}
+
+
+pub fn decryptctrl( src: []const u8 ,it: [10]  u21 , sep: [] const u8)  u64 {
 	var n : u64 = 0 ;
 	var v : u64 = 0 ;
 	var r : u21  = 0 ;
 	var z : usize = 0;
 	var crt : [] const u8 = undefined ;
 	var dst : []const u8= undefined ;
+	var result : u64 = 0;
 
 	const allocator = std.heap.page_allocator;
-	
+
 	var iter = iteratStr.iterator(src);
 	defer iter.deinit();
 	while (iter.next()) |ch| {
+		
+		if ( std.mem.eql(u8,"1",ch))  break ;
 
+
+		if ( std.mem.eql(u8,ch,sep)) {
+				r = @truncate(n); 
+				// std.debug.print("{d}|",.{r});
+				crt =std.fmt.allocPrint(allocator,"{u}", .{r}) catch unreachable;
+				if( z == 0  ) dst =std.fmt.allocPrint(allocator,"{s}", .{crt}) catch unreachable
+				else dst =std.fmt.allocPrint(allocator,"{s}{s}", .{dst,crt}) catch unreachable;
+				n = 0 ;
+				z = 1 ;
+		}
+		else  {
+					r= 0;
+					while(true) : ( r += 1) {
+						crt =std.fmt.allocPrint(allocator,"{u}", .{it[r]}) catch unreachable;
+						if ( std.mem.eql(u8,ch,crt)) { v = r ; break ; } 
+					}
+					if( n == 0 ) n = v
+					else { n = n * 10 ; n += v; }
+		}
+	}
+	
+	result = std.fmt.parseInt(u64,dst[0.. dst.len] ,10 ) catch unreachable ;
+	return result;
+}
+
+
+
+pub fn decryptTextLen( src: []const u8 , sep: [] const u8)  u64 {
+	var k : usize = 0;
+	var result : u64 = 0;
+
+
+	var iter = iteratStr.iterator(src);
+	defer iter.deinit();
+	while (iter.next()) |ch| {
+		
+		if (k == 0) {
+			if ( std.mem.eql(u8,"1",ch)) { k = 1 ; _= iter.next(); }
+			continue ;
+		}
+
+
+		if ( std.mem.eql(u8,ch,sep)) continue ;
+		result +=1;
+	}
+	return result;
+}
+
+pub fn cryptRead(path: [] const u8 , name : [] const u8) ! [] const u8 {
+	const allocator = std.heap.page_allocator;
+
+	const cDIR = std.fs.cwd().openDir(path,.{})
+	catch |err| {@panic(try std.fmt.allocPrint(allocator,"err Open.{s} {any}\n", .{path,err}));};
+
+	var file = cDIR.openFile(name, .{}) catch |err| {
+			@panic(try std.fmt.allocPrint(allocator,"err Open {s}.{any}\n", .{name, err}));};
+
+	const file_size = try file.getEndPos();
+	var buffer : [] u8= allocator.alloc(u8, file_size) catch unreachable ;
+
+	_= try file.read(buffer[0..buffer.len]);
+	file.close();
+	return buffer ;
+}
+
+
+
+pub fn cryptWrite(path: [] const u8 , name : [] const u8 ,
+				 buf : std.ArrayList([] const u8) , sep: [] const u8,  keyctrl: [10] u21) ! void {
+	
+	const allocator = std.heap.page_allocator;
+	
+	const cDIR = std.fs.cwd().openDir(path,.{})
+	catch |err| {@panic(try std.fmt.allocPrint(allocator,"err Open.{s} {any}\n", .{path,err}));};
+	
+	const file = cDIR.createFile(name,.{ }, ) catch unreachable ;
+
+	var lctrl: []const u8 = std.fmt.allocPrint(allocator,"{d}\n", .{cryptTextLen(buf,sep)}) catch unreachable;
+	var kctrl = encrypt(lctrl, keyctrl);
+	// std.debug.print("encrypt  len {s}\n",.{lctrl});
+
+	for (kctrl.items) |p| {
+		_= file.write(std.fmt.allocPrint(allocator,"{s}{s}", .{p,sep}) catch unreachable) catch unreachable  ;
+	}
+	for (buf.items) |p| {
+		_= file.write(std.fmt.allocPrint(allocator,"{s}{s}", .{p,sep}) catch unreachable) catch unreachable  ;
+	}
+	file.close();
+}
+
+
+pub fn decrypt( src: []const u8 ,it: [10]  u21 , sep: [] const u8) [] const u8 {
+	var n : u64 = 0 ;
+	var v : u64 = 0 ;
+	var r : u21  = 0 ;
+	var z : usize = 0;
+	var k : usize = 0;
+	var crt : [] const u8 = undefined ;
+	var dst : [] const u8= undefined ;
+
+	const allocator = std.heap.page_allocator;
+
+	var iter = iteratStr.iterator(src);
+	defer iter.deinit();
+	while (iter.next()) |ch| {
+		if (k == 0) {
+			if ( std.mem.eql(u8,"1",ch)) { k = 1 ; _= iter.next(); }
+			continue ;
+		}
 		if( std.mem.eql(u8,"1", ch) or std.mem.eql(u8,"2", ch) ){
 			if( std.mem.eql(u8,"1", ch)) {
 				if ( z == 0 ) dst = std.fmt.allocPrint(allocator,"{c}", .{10}) catch unreachable
@@ -183,8 +314,6 @@ pub fn decrypt( src: []const u8 ,it: [10]  u21 , sep: [] const u8) [] const u8 {
 			_= iter.next();
 		}
 		else {
-			var x =utf.utf8Decode(ch) catch unreachable;
-			_ = x;
 			if ( std.mem.eql(u8,ch,sep)) {
 					r = @truncate(n);
 					crt =std.fmt.allocPrint(allocator,"{u}", .{r}) catch unreachable;
@@ -212,47 +341,38 @@ pub fn decrypt( src: []const u8 ,it: [10]  u21 , sep: [] const u8) [] const u8 {
 pub fn main() ! void {
 	const allocator = std.heap.page_allocator;
 	const separator  : [] const u8 = "와";
-	const key = [10] u21 {'壓','읍','웨','$','e','ô','g','@','i','j'};
+	const key  = [10] u21 {'壓','읍','웨','$','e','ô','g','@','i','j'};
+	const ctrl = [10] u21 {'א','Ֆ','&','♂','פ','*','ח','✔','#','§'};
+	var stop: bool = false ;
+	var rctrl : u64 = undefined;
 	// -----------------------------------------------------------------------------------
-	const cDIR = std.fs.cwd().openDir("dspf",.{})
-	catch |err| {@panic(try std.fmt.allocPrint(allocator,"err Open.{any}\n", .{err}));};
-	
-	const nameJson = "xtest";
-	var my_file = cDIR.openFile(nameJson, .{}) catch |err| {
-			@panic(try std.fmt.allocPrint(allocator,"err Open.{any}\n", .{err}));};
-
-	const file_size = try my_file.getEndPos();
-	var buffer : [] u8= allocator.alloc(u8, file_size) catch unreachable ;
-
-
-	_= try my_file.read(buffer[0..buffer.len]);
-	my_file.close();
-// -----------------------------------------------------------------------------------
-	const nameJson2 = "xtest.dspf";
-	const file = cDIR.createFile(nameJson2,.{ }, ) catch unreachable ;
-	var res = encrypt(buffer, key);
-	for (res.items) |p| {
-		_= file.write(std.fmt.allocPrint(allocator,"{s}{s}", .{p,separator}) catch unreachable) catch unreachable  ;
-	}
-	file.close();
-
+	var buffer = cryptRead("dspf","xtest") catch unreachable;
+	var res: std.ArrayList([] const u8) = encrypt(buffer, key);
+	// std.debug.print("encrypt\n",.{ });
+	// for (res.items) |p| {
+	// 	std.debug.print("{s}",.{p});
+	// }
+	cryptWrite("dspf","xtest.dspf", res , separator , ctrl) catch unreachable;
+	allocator.free(buffer);
+	res = undefined ;
 	// -----------------------------------------------------------------------------------
-	std.debug.print("encrypt\n",.{ });
-	for (res.items) |p| {
-		std.debug.print("{s}",.{p});
-	}
-
+	buffer = cryptRead("dspf","xtest.dspf") catch unreachable;
+	// std.debug.print("\n buffer cryptRead crypted {s}\n ",.{buffer, });
 	// -----------------------------------------------------------------------------------
-	const my_file2 = cDIR.openFile(nameJson2, .{}) catch |err| {
-							 @panic(try std.fmt.allocPrint(allocator,"err Open.{any}\n", .{err}));};
-	defer my_file2.close();
-	const file_size2 = try my_file2.getEndPos();
-	var buffer2 = allocator.alloc(u8, file_size2) catch unreachable ;
-	_= try my_file.read(buffer2[0..buffer2.len]);
-	// -----------------------------------------------------------------------------------
-	var rep = decrypt(buffer2, key, separator);
+	rctrl = decryptctrl(buffer, ctrl, separator);
+	// std.debug.print("\n len decryptCtrl {d}\n ",.{rctrl });
+
+	var lrep = decryptTextLen(buffer, separator);
+
+	// std.debug.print("\n len decryptText {d}\n ",.{lrep  });
+	if ( lrep != rctrl )  stop = true;
+	if (stop) @panic(try std.fmt.allocPrint(allocator,"{s}\n", .{"error occurs"}));
 
 
-	std.debug.print("\ndecrypt\n",.{ });
+	var rep = decrypt(buffer, key, separator);
+	allocator.free(buffer);
+
+
+	std.debug.print("decrypt\n",.{ });
 	std.debug.print("{s}\n ",.{rep });
 }
